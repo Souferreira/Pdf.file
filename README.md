@@ -6,7 +6,7 @@ Este é um projeto que permite unir múltiplos arquivos PDF diretamente no naveg
 
 ## 🚀 Código do Projeto
 
-```html
+```
 <!-- Unificador de PDFs -->
 <html lang="pt-BR">
 <head>
