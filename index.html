@@ -33,33 +33,102 @@
         button:hover {
             background-color: #45a049;
         }
+        #fileList {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            list-style-type: none;
+            padding-left: 0;
+            display: inline-block;
+        }
+        #fileList li {
+            padding: 10px;
+            background-color: #f1f1f1;
+            margin: 5px;
+            border-radius: 4px;
+            display: inline-block;
+            width: 300px;
+            text-align: left;
+        }
+        #fileList li:hover {
+            background-color: #e1e1e1;
+        }
+        .file-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-actions button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px;
+            border: none;
+            cursor: pointer;
+        }
+        .file-actions button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        #viewer {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #fff;
+            display: none;
+            text-align: center;
+        }
+        #viewer img {
+            max-width: 90%;
+            max-height: 500px;
+        }
     </style>
 </head>
 <body>
     <h1>PDF.File</h1>
     <input type="file" id="pdfFiles" multiple accept="application/pdf">
     <br>
+    <ul id="fileList"></ul>
+    <br>
     <button id="mergeBtn">Unificar PDFs</button>
-    <p id="status"></p>
+    <p id="status" class="status"></p>
+
+    <!-- Visualizador -->
+    <div id="viewer">
+        <h2>Visualização</h2>
+        <img id="pdfViewerImage" src="" alt="Visualização do PDF">
+    </div>
+
     <!-- Script PDF-Lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <!-- Script JS -->
     <script>
-        document.getElementById('mergeBtn').addEventListener('click', async () => {
-            const input = document.getElementById('pdfFiles');
-            const files = input.files;
+        const fileList = document.getElementById('fileList');
+        const input = document.getElementById('pdfFiles');
+        const status = document.getElementById('status');
+        const viewer = document.getElementById('viewer');
+        const pdfViewerImage = document.getElementById('pdfViewerImage');
 
-            if (files.length < 2) {
+        let filesArray = [];
+
+        input.addEventListener('change', (e) => {
+            filesArray = Array.from(e.target.files);
+            updateFileList();  // Chama a função de atualização da lista
+        });
+
+        document.getElementById('mergeBtn').addEventListener('click', async () => {
+            if (filesArray.length < 2) {
                 alert("Selecione pelo menos dois arquivos PDF para unificar.");
                 return;
             }
 
             const mergedPdf = await PDFLib.PDFDocument.create();
-            const status = document.getElementById('status');
             status.textContent = "Processando...";
 
             try {
-                for (let file of files) {
+                for (let file of filesArray) {
                     const reader = new FileReader();
                     const loaded = await new Promise(resolve => {
                         reader.onload = () => resolve(reader.result);
@@ -88,6 +157,69 @@
             link.href = URL.createObjectURL(blob);
             link.download = fileName;
             link.click();
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            filesArray.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                li.setAttribute('data-index', index);
+
+                // Contêiner para os botões de ação
+                const actions = document.createElement('div');
+                actions.classList.add('file-actions');
+
+                // Botões de subir e descer
+                const moveUpBtn = document.createElement('button');
+                moveUpBtn.textContent = "Subir";
+                moveUpBtn.disabled = index === 0;
+                moveUpBtn.addEventListener('click', () => moveFileUp(index));
+
+                const moveDownBtn = document.createElement('button');
+                moveDownBtn.textContent = "Descer";
+                moveDownBtn.disabled = index === filesArray.length - 1;
+                moveDownBtn.addEventListener('click', () => moveFileDown(index));
+
+                actions.appendChild(moveUpBtn);
+                actions.appendChild(moveDownBtn);
+                li.appendChild(actions);
+                fileList.appendChild(li);
+
+                // Adicionar evento de clique para visualização
+                li.addEventListener('click', () => showPdfPreview(file));
+            });
+        }
+
+        function moveFileUp(index) {
+            if (index > 0) {
+                const temp = filesArray[index];
+                filesArray[index] = filesArray[index - 1];
+                filesArray[index - 1] = temp;
+                updateFileList();  // Atualiza a lista
+            }
+        }
+
+        function moveFileDown(index) {
+            if (index < filesArray.length - 1) {
+                const temp = filesArray[index];
+                filesArray[index] = filesArray[index + 1];
+                filesArray[index + 1] = temp;
+                updateFileList();  // Atualiza a lista
+            }
+        }
+
+        function showPdfPreview(file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const pdfDoc = await PDFLib.PDFDocument.load(e.target.result);
+                const firstPage = await pdfDoc.getPage(0);
+                const imageBytes = await firstPage.render({ scale: 0.5 });
+                const imageUrl = URL.createObjectURL(new Blob([imageBytes], { type: 'image/png' }));
+                pdfViewerImage.src = imageUrl;
+                viewer.style.display = 'block';
+            };
+            reader.readAsArrayBuffer(file);
         }
     </script>
 </body>
